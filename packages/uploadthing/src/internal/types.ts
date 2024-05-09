@@ -1,5 +1,3 @@
-import type { Schema } from "@effect/schema/Schema";
-import type * as S from "@effect/schema/Schema";
 import type * as Effect from "effect/Effect";
 
 import type {
@@ -7,6 +5,7 @@ import type {
   FetchContext,
   FetchEsque,
   FileRouterInputConfig,
+  FileRouterInputKey,
   Json,
   MaybePromise,
   Simplify,
@@ -16,23 +15,75 @@ import type {
 import type { FileUploadDataWithCustomId, UploadedFileData } from "../types";
 import type { LogLevel } from "./logger";
 import type { JsonParser } from "./parser";
-import type {
-  FailureActionPayload,
-  MPUResponseSchema,
-  MultipartCompleteActionPayload,
-  PresignedBaseSchema,
-  PresignedURLResponseSchema,
-  PSPResponseSchema,
-  UploadActionPayload,
-} from "./shared-schemas";
 
 /**
  * Returned by `/api/prepareUpload` and `/api/uploadFiles`
  */
-export type PresignedBase = S.Schema.Type<typeof PresignedBaseSchema>;
-export type PSPResponse = S.Schema.Type<typeof PSPResponseSchema>;
-export type MPUResponse = S.Schema.Type<typeof MPUResponseSchema>;
-export type PresignedURLs = S.Schema.Type<typeof PresignedURLResponseSchema>;
+export type PresignedBase = {
+    readonly key: string;
+    readonly fileName: string;
+    readonly fileUrl: string;
+    readonly pollingJwt: string;
+    readonly pollingUrl: string;
+    readonly contentDisposition: "inline" | "attachment";
+    readonly customId: string | null;
+    readonly fileType: FileRouterInputKey;
+};
+export type PSPResponse = {
+    readonly key: string;
+    readonly fileName: string;
+    readonly fileUrl: string;
+    readonly pollingJwt: string;
+    readonly pollingUrl: string;
+    readonly contentDisposition: "inline" | "attachment";
+    readonly customId: string | null;
+    readonly fileType: FileRouterInputKey;
+    readonly url: string;
+    readonly fields: {
+        readonly [x: string]: string;
+    };
+};
+export type MPUResponse = {
+    readonly key: string;
+    readonly fileName: string;
+    readonly fileUrl: string;
+    readonly pollingJwt: string;
+    readonly pollingUrl: string;
+    readonly contentDisposition: "inline" | "attachment";
+    readonly customId: string | null;
+    readonly fileType: FileRouterInputKey;
+    readonly urls: readonly string[];
+    readonly uploadId: string;
+    readonly chunkSize: number;
+    readonly chunkCount: number;
+};
+export type PresignedURLs = readonly ({
+    readonly key: string;
+    readonly fileName: string;
+    readonly fileUrl: string;
+    readonly pollingJwt: string;
+    readonly pollingUrl: string;
+    readonly contentDisposition: "inline" | "attachment";
+    readonly customId: string | null;
+    readonly fileType: FileRouterInputKey;
+    readonly url: string;
+    readonly fields: {
+        readonly [x: string]: string;
+    };
+} | {
+    readonly key: string;
+    readonly fileName: string;
+    readonly fileUrl: string;
+    readonly pollingJwt: string;
+    readonly pollingUrl: string;
+    readonly contentDisposition: "inline" | "attachment";
+    readonly customId: string | null;
+    readonly fileType: FileRouterInputKey;
+    readonly urls: readonly string[];
+    readonly uploadId: string;
+    readonly chunkSize: number;
+    readonly chunkCount: number;
+})[];
 
 /**
  * Marker used to append a `customId` to the incoming file data in `.middleware()`
@@ -94,7 +145,11 @@ type MiddlewareFn<
   TArgs extends MiddlewareFnArgs<any, any, any>,
 > = (
   opts: TArgs & {
-    files: Schema.Type<typeof UploadActionPayload>["files"];
+    files: readonly {
+    readonly name: string;
+    readonly size: number;
+    readonly type: string;
+}[];
     input: TInput extends UnsetMarker ? undefined : TInput;
   },
 ) => MaybePromise<TOutput>;
@@ -260,15 +315,60 @@ export const isUploadThingHook = (input: unknown): input is UploadThingHook =>
  */
 export type UTEvents = {
   upload: {
-    in: S.Schema.Type<typeof UploadActionPayload>;
-    out: S.Schema.Type<typeof PresignedURLResponseSchema>;
+    in: {
+    readonly files: readonly {
+        readonly name: string;
+        readonly size: number;
+        readonly type: string;
+    }[];
+    readonly input: Json;
+};
+    out: readonly ({
+    readonly key: string;
+    readonly customId: string | null;
+    readonly fileName: string;
+    readonly fileUrl: string;
+    readonly pollingJwt: string;
+    readonly pollingUrl: string;
+    readonly contentDisposition: "inline" | "attachment";
+    readonly fileType: FileRouterInputKey;
+    readonly url: string;
+    readonly fields: {
+        readonly [x: string]: string;
+    };
+} | {
+    readonly key: string;
+    readonly customId: string | null;
+    readonly fileName: string;
+    readonly fileUrl: string;
+    readonly pollingJwt: string;
+    readonly pollingUrl: string;
+    readonly contentDisposition: "inline" | "attachment";
+    readonly fileType: FileRouterInputKey;
+    readonly urls: readonly string[];
+    readonly uploadId: string;
+    readonly chunkSize: number;
+    readonly chunkCount: number;
+})[];
   };
   failure: {
-    in: S.Schema.Type<typeof FailureActionPayload>;
+    in: {
+    readonly fileKey: string;
+    readonly uploadId: string | null;
+    readonly storageProviderError?: string | undefined;
+    readonly fileName: string;
+};
     out: null;
   };
   "multipart-complete": {
-    in: S.Schema.Type<typeof MultipartCompleteActionPayload>;
+    in: {
+    readonly fileKey: string;
+    readonly uploadId: string;
+    readonly etags: readonly {
+        readonly tag: string;
+        readonly partNumber: number;
+    }[];
+};
     out: null;
   };
 };
